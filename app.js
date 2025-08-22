@@ -4,11 +4,12 @@ const bodyParser = require('body-parser');
 const axios = require('axios');
 
 const app = express();
-const port = process.env.PORT || 3000;
+// Recomendacion de render: Usa variables de entorno para la configuración
+const port = process.env.PORT || 3000
 const GITHUB_SECRET = process.env.GITHUB_SECRET; // Configura tu secreto
-const TEAMS_WEBHOOK_URL = process.env.TEAMS_WEBHOOK_URL; // Webhook de Teams
 
-// Middleware para verificar firma
+app.use(bodyParser.json());
+
 function verifySignature(req, res, buf, encoding) {
   const signature = req.headers['x-hub-signature-256'];
   const hmac = crypto.createHmac('sha256', GITHUB_SECRET);
@@ -18,41 +19,39 @@ function verifySignature(req, res, buf, encoding) {
   }
 }
 
-app.use(bodyParser.json({ verify: verifySignature }));
+app.post('/webhook', bodyParser.json({ verify: verifySignature }), (req, res) => {
+  const event = req.headers['x-github-event'];
+  const body = req.body;
 
-// Endpoint para recibir eventos de GitHub
-app.post('/webhook', async (req, res) => {
-  try {
-    const event = req.headers['x-github-event'];
-    const body = req.body;
+  if (event === 'pull_request' && body.action === 'opened') {
 
-    if (event === 'pull_request' && body.action === 'opened') {
-      const repoName = body.repository?.name;
-      if (repoName && (repoName.includes('WF_') || repoName.includes('ORA_'))) {
+    // Extraer información del repositorio   
+    const repoName = body.repository && body.repository.name;
+    console.log('Nombre repositorio:', repoName);
+
+    if (repoName && (repoName.includes('WF_') || repoName.includes('ORA_'))) {
+        // Aquí puedes manejar el evento de Pull Request abierto    
         const pr = body.pull_request;
-        await sendTeamsNotification(pr);
-      }
-    }
-
-    res.status(200).end();
-  } catch (error) {
-    console.error('Error procesando webhook:', error);
-    res.status(500).send('Error interno');
+        // Aquí llamarás a Teams
+        sendTeamsNotification(pr);
+    }    
   }
+  res.status(200).end();
 });
 
-// Endpoint raíz para verificar estado
 app.get('/', (req, res) => {
-  res.send('Webhook PR Notifications v2.0');
+  res.send('Version 1.0.0');
   console.log('Root path accessed');
 });
 
-// Enviar notificación a Microsoft Teams
-async function sendTeamsNotification(pr) {
+function sendTeamsNotification(pr) {
+  const webhookUrl = process.env.TEAMS_WEBHOOK_URL;
+
+  // Obtener revisores
   const reviewers = pr.requested_reviewers?.map(r => r.login).join(', ') || 'N/A';
   const avatar = pr.user?.avatar_url || 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png';
 
-  // Determinar color según estado del PR
+  // Determinar color del mensaje según estado del PR
   let themeColor = '0078D7'; // Azul por defecto
   if (pr.state === 'closed' && pr.merged) themeColor = '28A745'; // Verde si mergeado
   else if (pr.state === 'closed') themeColor = 'D83B01'; // Rojo si cerrado
@@ -64,7 +63,7 @@ async function sendTeamsNotification(pr) {
     "summary": `Nuevo Pull Request en ${pr.base.repo.name}`,
     "sections": [
       {
-        "activityTitle": `🚀 **Nuevo Pull Request Creado**`,
+        "activityTitle": `🚀 **Nuevo Pull Request**`,
         "activitySubtitle": `Repositorio: **${pr.base.repo.name}**`,
         "activityImage": avatar,
         "facts": [
@@ -99,12 +98,9 @@ async function sendTeamsNotification(pr) {
     ]
   };
 
-  try {
-    await axios.post(TEAMS_WEBHOOK_URL, message);
-    console.log(`✅ Notificación enviada a Teams para PR: ${pr.title}`);
-  } catch (err) {
-    console.error('❌ Error enviando mensaje a Teams:', err.response?.data || err.message);
-  }
+  axios.post(webhookUrl, message)
+    .then(() => console.log('✅ Mensaje enviado a Teams'))
+    .catch(err => console.error('❌ Error enviando mensaje a Teams', err));
 }
 
 app.listen(port, () => {
