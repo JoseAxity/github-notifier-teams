@@ -28,7 +28,7 @@ app.post('/webhook', async (req, res) => {
 
     if (event === 'pull_request' && body.action === 'opened') {
       const repoName = body.repository?.name;
-      if (repoName && (repoName.includes('WF_') || repoName.includes('ORA_'))) {
+      if (repoName && (repoName.includes('demo-') || repoName.includes('WF_') || repoName.includes('ORA_'))) {
         const pr = body.pull_request;
         await sendTeamsNotification(pr);
       }
@@ -43,7 +43,7 @@ app.post('/webhook', async (req, res) => {
 
 // Endpoint raíz para verificar estado
 app.get('/', (req, res) => {
-  res.send('Webhook PR Notifications v2.0');
+  res.send('Webhook PR Notifications v4.0');
   console.log('Root path accessed');
 });
 
