@@ -28,7 +28,7 @@ app.post('/webhook', async (req, res) => {
 
     if (event === 'pull_request' && body.action === 'opened') {
       const repoName = body.repository?.name;
-      if (repoName && (repoName.includes('demo-') || repoName.includes('WF_') || repoName.includes('ORA_'))) {
+      if (repoName && (repoName.includes('WF_') || repoName.includes('ORA_'))) {
         const pr = body.pull_request;
         await sendTeamsNotification(pr);
       }
@@ -43,8 +43,8 @@ app.post('/webhook', async (req, res) => {
 
 // Endpoint raíz para verificar estado
 app.get('/', (req, res) => {
-  res.send('Webhook PR Notifications v4.0');
-  console.log('Root path accessed');
+  res.send('Webhook PR Notifications v5.0');
+  console.log('Root path accessed Webhook PR Notifications v5.0');
 });
 
 // Enviar notificación a Microsoft Teams
@@ -71,10 +71,7 @@ async function sendTeamsNotification(pr) {
           { "name": "Título:", "value": pr.title },
           { "name": "Autor:", "value": pr.user.login },
           { "name": "Branch:", "value": `${pr.head.ref} → ${pr.base.ref}` },
-          { "name": "Estado:", "value": pr.state },
           { "name": "Revisores:", "value": reviewers },
-          { "name": "Archivos modificados:", "value": `${pr.changed_files}` },
-          { "name": "Commits:", "value": `${pr.commits}` },
           { "name": "Creado:", "value": new Date(pr.created_at).toLocaleString('es-MX') }
         ],
         "markdown": true
