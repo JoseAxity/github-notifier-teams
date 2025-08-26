@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const bodyParser = require('body-parser');
 const axios = require('axios');
+const { DateTime } = require('luxon'); // Agrega luxon
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -57,6 +58,11 @@ async function sendTeamsNotification(pr) {
   if (pr.state === 'closed' && pr.merged) themeColor = '28A745'; // Verde si mergeado
   else if (pr.state === 'closed') themeColor = 'D83B01'; // Rojo si cerrado
 
+  // Formatear fecha en zona horaria de Ciudad de México
+  const createdAtMX = DateTime.fromISO(pr.created_at, { zone: 'utc' })
+    .setZone('America/Mexico_City')
+    .toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS);
+
   const message = {
     "@type": "MessageCard",
     "@context": "https://schema.org/extensions",
@@ -72,7 +78,7 @@ async function sendTeamsNotification(pr) {
           { "name": "Autor:", "value": pr.user.login },
           { "name": "Branch:", "value": `${pr.head.ref} → ${pr.base.ref}` },
           { "name": "Revisores:", "value": reviewers },
-          { "name": "Creado:", "value": new Date(pr.created_at).toLocaleString('es-MX') }
+          { "name": "Creado:", "value": createdAtMX }
         ],
         "markdown": true
       }
