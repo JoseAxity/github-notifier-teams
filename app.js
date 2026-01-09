@@ -14,6 +14,14 @@ function verifySignature(req, res, buf, encoding) {
   const signature = req.headers['x-hub-signature-256'];
   const hmac = crypto.createHmac('sha256', GITHUB_SECRET);
   const digest = 'sha256=' + hmac.update(buf).digest('hex');
+
+  console.log('--- Webhook Signature Debug ---');
+  console.log('Header signature:', signature);
+  console.log('Calculated digest:', digest);
+  console.log('Secret loaded?', !!GITHUB_SECRET);
+  console.log('Raw length:', buf.length);
+  console.log('-------------------------------');
+  
   if (signature !== digest) {
     throw new Error('Invalid signature.');
   }
